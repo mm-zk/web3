@@ -417,7 +417,7 @@ func ConvertArguments(args abi.Arguments, params []interface{}) ([]interface{}, 
 // Unrecognized types are passed through unmodified.
 func ConvertArgument(abiType abi.Type, param interface{}) (interface{}, error) {
 	size := abiType.Size
-	// fmt.Println("INPUT TYPE:", abiType, "SIZE:", size, "Param", param)
+	//fmt.Println("INPUT TYPE:", abiType, "SIZE:", size, "Param", param)
 	switch abiType.T {
 	case abi.StringTy:
 	case abi.BoolTy:
@@ -490,6 +490,17 @@ func ConvertArgument(abiType abi.Type, param interface{}) (interface{}, error) {
 				arrayParams[i] = converted.(string)
 			}
 			return arrayParams, nil
+		case abi.BytesTy:
+			arrayParams := make([][]uint8, len(inputArray))
+			for i, elem := range inputArray {
+				converted, err := ConvertArgument(*abiType.Elem, elem)
+				if err != nil {
+					return nil, err
+				}
+				arrayParams[i] = converted.([]uint8)
+			}
+			return arrayParams, nil
+
 
 		case abi.BoolTy:
 			arrayParams := make([]bool, len(inputArray))
@@ -518,6 +529,9 @@ func ConvertArgument(abiType abi.Type, param interface{}) (interface{}, error) {
 		if s, ok := param.(string); ok {
 			val, err := hexutil.Decode(s)
 			if err != nil {
+				if errors.Is(err, hexutil.ErrEmptyString) {
+					return make([]uint8, 0), nil
+				}
 				return nil, fmt.Errorf("failed to parse bytes %q: %v", s, err)
 			}
 			return val, nil
